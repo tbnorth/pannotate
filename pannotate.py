@@ -41,6 +41,8 @@ def make_parser():
 
     parser.add_argument('--json', action='store_true',
         help='Return JSON output')
+    parser.add_argument('--html', action='store_true',
+        help='Return HTML output')
 
     return parser
 
@@ -58,9 +60,31 @@ def main():
 
     if opt.json:
         json.dump(annotes, sys.stdout, indent=4)
+    elif opt.html:
+        html_dump(annotes, sys.stdout)
     else:
         for annote in annotes:
             print(annote_str(annote))
+
+def html_dump(annotes, out):
+
+    html = E.html()
+    for annote in annotes:
+        html.append(E.h2(
+            E.span(annote['ID'], class_='bibkey'),
+            E.span(annote['title'], class_='title'),
+        ))
+        html.append(E.div(annote['author'], class_='author'))
+        html.append(E.div(annote['journal'], class_='journal'))
+        for annotation in annote['annotations']:
+            html.append(E.div(
+                E.span(annotation['page'], class_='page'),
+                E.span(annotation['text'], class_='text'),
+                class_='annotation',
+            ))
+            if annotation['note']:
+                html.append(E.div(annotation['note'], class_='note'))
+    out.write(ET.tostring(html))
 
 def annotes_dicts(bibfile, pdfdir):
 
