@@ -1,44 +1,97 @@
+import argparse
+import json
 import popplerqt4
 import PyQt4
 import sys
 import urllib
 import os
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
+
+from lxml import etree as ET
+from lxml.builder import E
 
 import bibtexparser
 
+try:
+    unicode
+except:
+    unicode = str
+
 Annote = namedtuple("Annote", "page date text note")
+
+def _to_utf(s):
+    if isinstance(s, (int, float)):
+        return str(s)
+    try:
+        return unicode(s.toUtf8(), 'utf-8')  # .toUtf8 returns QByteArray
+    except AttributeError:
+        return s  # was unicode already?
+
+def make_parser():
+
+    parser = argparse.ArgumentParser(
+        description="""Read annotations from PDFs""",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument('inputs', type=str, nargs='+',
+        help="<pdf-file> or <bib-file> <pdf-folder>"
+    )
+
+    parser.add_argument('--json', action='store_true',
+        help='Return JSON output')
+
+    return parser
 
 def main():
 
-    if not sys.argv[1].endswith('.bib'):
-        annotes = get_annotes(sys.argv[1])
-        for annote in annotes:
-            print("p%s, %s" % (annote.page, annote.text))
-        if annote.note:
-            print('=>  %s' % annote.note)
-        return
+    opt = make_parser().parse_args()
 
-    bibfile, pdfdir = sys.argv[1:]
+    if len(opt.inputs) == 1:
+        annote = defaultdict(lambda: "???")
+        annote['annotations'] = get_annotes(opt.inputs[0])
+        annotes = [annote]
+    else:
+        bibfile, pdfdir = opt.inputs
+        annotes = annotes_dicts(bibfile, pdfdir)
+
+    if opt.json:
+        json.dump(annotes, sys.stdout, indent=4)
+    else:
+        for annote in annotes:
+            print(annote_str(annote))
+
+def annotes_dicts(bibfile, pdfdir):
 
     with open(bibfile) as bibtex_file:
         bibtex_str = bibtex_file.read()
-
     bib_database = bibtexparser.loads(bibtex_str)
-    keys = set()
+
+    annotes_list = []
+
     for entry in bib_database.entries:
-        keys.update(entry.keys())
         if 'file' in entry:
-            annotes = get_annotes(os.path.join(pdfdir, entry['file'][1:-4]))
+            filepath = os.path.join(pdfdir, entry['file'][1:-4])
+            sys.stderr.write("%s\n" % filepath)
+            annotes = get_annotes(filepath)
             if annotes:
-                print(u"{author}, {year}, {journal}, {ID}".format(
-                    **{k:entry.get(k, '???') for k in ('author', 'year', 'journal', 'ID')}))
-                print(entry['title'])
-                for annote in annotes:
-                    print("p%s, %s" % (annote.page, annote.text))
-                    if annote.note:
-                        print('=>  %s' % annote.note)
+                info = {'file': filepath}
+                annotes_list.append(info)
+                for k in 'author', 'year', 'title', 'journal', 'ID':
+                    info[k] = _to_utf(entry.get(k, '???'))
+                info['annotations'] = [{k:_to_utf(v) for k,v in j._asdict().items()} for j in annotes]
+
+    return annotes_list
+
+def annote_str(annote):
+
+    ans = [u"{author}, {year}, {journal}, {ID}\n{title}".format(**annote)]
+    for annotation in annote['annotations']:
+        ans.append("p%s, %s" % (annotation['page'], annotation['text']))
+        if annotation['note']:
+            ans.append('=>  %s' % annotation['note'])
+    return '\n'.join(ans)
 
 def get_annotes(filepath):
 
@@ -49,7 +102,7 @@ def get_annotes(filepath):
     # print dir(document)
     # print document.date()
     # print [unicode(i) for i in document.infoKeys()]
-    
+
     annotes = []
 
     for page_n in range(document.numPages()):
