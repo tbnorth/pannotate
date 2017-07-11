@@ -2,6 +2,7 @@ import argparse
 import json
 import popplerqt4
 import PyQt4
+import time
 import sys
 import urllib
 import os
@@ -66,26 +67,6 @@ def main():
         for annote in annotes:
             print(annote_str(annote))
 
-def html_dump(annotes, out):
-
-    html = E.html()
-    for annote in annotes:
-        html.append(E.h2(
-            E.span(annote['ID'], class_='bibkey'),
-            E.span(annote['title'], class_='title'),
-        ))
-        html.append(E.div(annote['author'], class_='author'))
-        html.append(E.div(annote['journal'], class_='journal'))
-        for annotation in annote['annotations']:
-            html.append(E.div(
-                E.span(annotation['page'], class_='page'),
-                E.span(annotation['text'], class_='text'),
-                class_='annotation',
-            ))
-            if annotation['note']:
-                html.append(E.div(annotation['note'], class_='note'))
-    out.write(ET.tostring(html))
-
 def annotes_dicts(bibfile, pdfdir):
 
     with open(bibfile) as bibtex_file:
@@ -108,6 +89,55 @@ def annotes_dicts(bibfile, pdfdir):
 
     return annotes_list
 
+def html_dump(annotes, out):
+
+    timestamp = time.asctime()
+
+    body = E.body(E.h1("Notes %s" % timestamp))
+    html = E.html(E.head(E.style("""
+    :root {
+      --c_bg: #fff;
+      --c_fg: #000;
+      --c_bibkey: green;
+      --c_note: #800;
+
+      --c_bg: #002b36;
+      --c_fg: #657b83;
+      --c_bibkey: #859900;
+      --c_note: #b58900;
+    }
+    * { font-family: sans-serif; }
+    body { background: var(--c_bg); color: var(--c_fg); }
+    a { text-decoration: none; }
+    a:hover { text-decoration: underline; text-decoration-color: var(--c_fg); }
+    h2 { margin-bottom: 0; }
+    .bibkey { font-size: 75%; color: var(--c_bibkey); }
+    .author { font-weight: bold; }
+    .journal { font-style: italic; }
+    .note { color: var(--c_note); }
+    .page { display: inline-block; width: 2em; font-family: "Courier New", monospace; }
+    .text a { color: var(--c_fg); }
+    .text { display: inline-block; width: 90%; }
+    """), E.title("Notes %s" % timestamp)), body)
+
+    for annote in annotes:
+        body.append(E.h2(
+            E.a(E.span(annote['ID'], class_='bibkey'), href=annote['file'], target=annote['file']), ' ',
+            E.span(annote['title'], class_='title'),
+        ))
+        body.append(E.div(annote['author'], class_='author'))
+        body.append(E.div(annote['journal'], class_='journal'))
+        for annotation in annote['annotations']:
+            body.append(E.div(
+                E.span(annotation['page'], class_='page'), ' ',
+                E.span(E.a(annotation['text'],
+                    href="%s#page=%s" % (annote['file'], annotation['page']), target='_blank'), class_='text'),
+                class_='annotation',
+            ))
+            if annotation['note']:
+                body.append(E.div(annotation['note'], class_='note'))
+
+    out.write(ET.tostring(html).replace('class_', 'class'))
 def annote_str(annote):
 
     ans = [u"{author}, {year}, {journal}, {ID}\n{title}".format(**annote)]
