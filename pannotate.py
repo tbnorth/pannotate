@@ -1,18 +1,19 @@
 import argparse
 import json
-import popplerqt4
-import PyQt4
-import time
-import sys
-import urllib
 import os
+import re
+import sys
+import time
+import urllib
 
 from collections import namedtuple, defaultdict
 
+import bibtexparser
+import popplerqt4
+import PyQt4
+
 from lxml import etree as ET
 from lxml.builder import E
-
-import bibtexparser
 
 try:
     unicode
@@ -44,6 +45,9 @@ def make_parser():
         help='Return JSON output')
     parser.add_argument('--html', action='store_true',
         help='Return HTML output')
+    parser.add_argument('--filter', action='append', nargs=2,
+        metavar=('KEY', 'PATTERN'), default=[],
+        help='field KEY must match regex PATTERN.Repeatable.')
 
     return parser
 
@@ -52,12 +56,12 @@ def main():
     opt = make_parser().parse_args()
 
     if len(opt.inputs) == 1:
-        annote = defaultdict(lambda: "???")
+        annote = {}
         annote['annotations'] = get_annotes(opt.inputs[0])
         annotes = [annote]
     else:
         bibfile, pdfdir = opt.inputs
-        annotes = annotes_dicts(bibfile, pdfdir)
+        annotes = annotes_dicts(bibfile, pdfdir, opt.filter)
 
     if opt.json:
         json.dump(annotes, sys.stdout, indent=4)
@@ -67,7 +71,7 @@ def main():
         for annote in annotes:
             print(annote_str(annote))
 
-def annotes_dicts(bibfile, pdfdir):
+def annotes_dicts(bibfile, pdfdir, filters):
 
     with open(bibfile) as bibtex_file:
         bibtex_str = bibtex_file.read()
@@ -76,15 +80,23 @@ def annotes_dicts(bibfile, pdfdir):
     annotes_list = []
 
     for entry in bib_database.entries:
-        if 'file' in entry:
-            filepath = os.path.join(pdfdir, entry['file'][1:-4])
-            sys.stderr.write("%s\n" % filepath)
-            annotes = get_annotes(filepath)
-            if annotes:
+        match = True
+        for key, pattern in filters:
+            if key not in entry or not re.search(pattern, entry[key]):
+                match = False
+                break
+        if match and (entry.get('file') or entry.get('review')):
+            if entry.get('file'):
+                filepath = os.path.join(pdfdir, entry['file'][1:-4])
+                sys.stderr.write("%s\n" % filepath)
+                annotes = get_annotes(filepath)
+            else:
+                annotes = []
+            if annotes or entry.get('review') is not None:
                 info = {'file': filepath}
                 annotes_list.append(info)
-                for k in 'author', 'year', 'title', 'journal', 'ID':
-                    info[k] = _to_utf(entry.get(k, '???'))
+                for k in 'author', 'year', 'title', 'journal', 'review', 'ID', 'doi':
+                    info[k] = _to_utf(entry.get(k, None))
                 info['annotations'] = [{k:_to_utf(v) for k,v in j._asdict().items()} for j in annotes]
 
     return annotes_list
@@ -105,31 +117,42 @@ def html_dump(annotes, out):
       --c_fg: #657b83;
       --c_bibkey: #859900;
       --c_note: #b58900;
+      --c_doi: #586e75;
     }
     * { font-family: sans-serif; }
     body { background: var(--c_bg); color: var(--c_fg); }
     a { text-decoration: none; }
     a:hover { text-decoration: underline; text-decoration-color: var(--c_fg); }
     h2 { margin-bottom: 0; }
+    .title a { color: var(--c_fg); }
+    .doi { font-size: 50%; }
+    .doi a { color: var(--c_doi); }
     .bibkey { font-size: 75%; color: var(--c_bibkey); }
     .author { font-weight: bold; }
     .journal { font-style: italic; }
     .note { color: var(--c_note); }
-    .page { display: inline-block; width: 2em; font-family: "Courier New", monospace; }
+    .page { display: inline-block; width: 2em; font-family: "Courier New", monospace; 
+            text-align: center; vertical-align: top; }
     .text a { color: var(--c_fg); }
     .text { display: inline-block; width: 90%; }
     """), E.title("Notes %s" % timestamp)), body)
 
     for annote in annotes:
-        body.append(E.h2(
-            E.a(E.span(annote['ID'], class_='bibkey'), href=annote['file'], target=annote['file']), ' ',
-            E.span(annote['title'], class_='title'),
-        ))
+        h2 = E.h2(
+            E.span(annote['ID'], class_='bibkey'), ' ',
+            E.span(E.a(annote['title'], href=annote['file'], target=annote['file']), class_='title'), ' ',
+        )
+        if annote.get('doi'):
+            h2.append(E.span(E.a(annote['doi'], href='https://dx.doi.org/'+annote['doi'], target=annote['file']), class_='doi'))
+        body.append(h2)
         body.append(E.div(annote['author'], class_='author'))
-        body.append(E.div(annote['journal'], class_='journal'))
+        if annote.get('journal'):
+            body.append(E.div(annote['journal'], class_='journal'))
+        if annote.get('review'):
+            body.append(E.div(annote['review'], class_='note'))
         for annotation in annote['annotations']:
             body.append(E.div(
-                E.span(annotation['page'], class_='page'), ' ',
+                E.span(E.span(annotation['page']), class_='page'), ' ',
                 E.span(E.a(annotation['text'],
                     href="%s#page=%s" % (annote['file'], annotation['page']), target='_blank'), class_='text'),
                 class_='annotation',
@@ -139,7 +162,7 @@ def html_dump(annotes, out):
 
     out.write(ET.tostring(html).replace('class_', 'class'))
 def annote_str(annote):
-
+    annote = defaultdict(lambda: "?", annote)
     ans = [u"{author}, {year}, {journal}, {ID}\n{title}".format(**annote)]
     for annotation in annote['annotations']:
         ans.append("p%s, %s" % (annotation['page'], annotation['text']))
