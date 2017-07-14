@@ -99,6 +99,7 @@ def annotes_dicts(bibfile, pdfdir, filters):
                     info[k] = _to_utf(entry.get(k, None))
                 info['annotations'] = [{k:_to_utf(v) for k,v in j._asdict().items()} for j in annotes]
 
+    annotes_list.sort(key=lambda x: x['ID'])
     return annotes_list
 
 def html_dump(annotes, out):
