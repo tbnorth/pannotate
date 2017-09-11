@@ -45,9 +45,12 @@ def make_parser():
         help='Return JSON output')
     parser.add_argument('--html', action='store_true',
         help='Return HTML output')
+    parser.add_argument('--cite-as',
+        help='E.g. "--cite-as=\\\\no-site{%s}" to get a list of'
+        'citation commands (useful with --filter).')
     parser.add_argument('--filter', action='append', nargs=2,
         metavar=('KEY', 'PATTERN'), default=[],
-        help='field KEY must match regex PATTERN.Repeatable.')
+        help='field KEY must match regex PATTERN. Repeatable.')
 
     return parser
 
@@ -67,6 +70,8 @@ def main():
         json.dump(annotes, sys.stdout, indent=4)
     elif opt.html:
         html_dump(annotes, sys.stdout)
+    elif opt.cite_list:
+        print('\n'.join([opt.cite_list % i['ID'] for i in annotes]))
     else:
         for annote in annotes:
             print(annote_str(annote))
