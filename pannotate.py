@@ -46,7 +46,7 @@ def make_parser():
     parser.add_argument('--html', action='store_true',
         help='Return HTML output')
     parser.add_argument('--cite-as',
-        help='E.g. "--cite-as=\\\\no-site{%s}" to get a list of'
+        help='E.g. "--cite-as=\\\\no-site{%%s}" to get a list of'
         'citation commands (useful with --filter).')
     parser.add_argument('--filter', action='append', nargs=2,
         metavar=('KEY', 'PATTERN'), default=[],
@@ -64,19 +64,20 @@ def main():
         annotes = [annote]
     else:
         bibfile, pdfdir = opt.inputs
-        annotes = annotes_dicts(bibfile, pdfdir, opt.filter)
+        annotes = annotes_dicts(bibfile, pdfdir, opt.filter,
+            include_all=bool(opt.cite_as))
 
     if opt.json:
         json.dump(annotes, sys.stdout, indent=4)
     elif opt.html:
         html_dump(annotes, sys.stdout)
-    elif opt.cite_list:
-        print('\n'.join([opt.cite_list % i['ID'] for i in annotes]))
+    elif opt.cite_as:
+        print('\n'.join([opt.cite_as % i['ID'] for i in annotes]))
     else:
         for annote in annotes:
             print(annote_str(annote))
 
-def annotes_dicts(bibfile, pdfdir, filters):
+def annotes_dicts(bibfile, pdfdir, filters, include_all=False):
 
     with open(bibfile) as bibtex_file:
         bibtex_str = bibtex_file.read()
@@ -90,14 +91,15 @@ def annotes_dicts(bibfile, pdfdir, filters):
             if key not in entry or not re.search(pattern, entry[key]):
                 match = False
                 break
-        if match and (entry.get('file') or entry.get('review')):
+        filepath = ''
+        if match and (entry.get('file') or entry.get('review') or include_all):
             if entry.get('file'):
                 filepath = os.path.join(pdfdir, entry['file'][1:-4])
                 sys.stderr.write("%s\n" % filepath)
                 annotes = get_annotes(filepath)
             else:
                 annotes = []
-            if annotes or entry.get('review') is not None:
+            if annotes or entry.get('review') is not None or include_all:
                 info = {'file': filepath}
                 annotes_list.append(info)
                 for k in 'author', 'year', 'title', 'journal', 'review', 'ID', 'doi':
@@ -180,7 +182,7 @@ def get_annotes(filepath):
 
     document = popplerqt4.Poppler.Document.load(filepath)
     if not document:
-        return
+        return []
 
     # print dir(document)
     # print document.date()
