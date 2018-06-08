@@ -9,8 +9,8 @@ import urllib
 from collections import namedtuple, defaultdict
 
 import bibtexparser
-import popplerqt4
-import PyQt4
+import popplerqt5
+import PyQt5
 
 from lxml import etree as ET
 from lxml.builder import E
@@ -168,7 +168,10 @@ def html_dump(annotes, out):
             if annotation['note']:
                 body.append(E.div(annotation['note'], class_='note'))
 
-    out.write(ET.tostring(html).replace('class_', 'class'))
+    html_str = ET.tostring(html)
+    html_str = html_str.decode('utf-8').replace('class_', 'class')
+    out.write(html_str)
+
 def annote_str(annote):
     annote = defaultdict(lambda: "?", annote)
     ans = [u"{author}, {year}, {journal}, {ID}\n{title}".format(**annote)]
@@ -180,7 +183,7 @@ def annote_str(annote):
 
 def get_annotes(filepath):
 
-    document = popplerqt4.Poppler.Document.load(filepath)
+    document = popplerqt5.Poppler.Document.load(filepath)
     if not document:
         return []
 
@@ -196,14 +199,14 @@ def get_annotes(filepath):
         pheight = page.pageSize().height()
         # pwidth = pheight = 1
         for annotation in page.annotations():
-            if not isinstance(annotation, popplerqt4.Poppler.HighlightAnnotation):
+            if not isinstance(annotation, popplerqt5.Poppler.HighlightAnnotation):
                 continue
             pagenum = page_n+1
             date = annotation.modificationDate().toString()
             note = annotation.contents()
             txt = []
             for quad in annotation.highlightQuads():
-                bdy = PyQt4.QtCore.QRectF()
+                bdy = PyQt5.QtCore.QRectF()
                 bdy.setCoords(
                     quad.points[0].x() * pwidth,
                     quad.points[0].y() * pheight,
