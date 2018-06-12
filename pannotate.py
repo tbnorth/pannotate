@@ -114,7 +114,9 @@ def html_dump(annotes, out):
     timestamp = time.asctime()
 
     body = E.body(E.h1("Notes %s" % timestamp))
-    html = E.html(E.head(E.style("""
+    html = E.html(E.head(
+    E.title("Notes %s" % timestamp),
+    E.style("""
     :root {
       --c_bg: #fff;
       --c_fg: #000;
@@ -143,11 +145,24 @@ def html_dump(annotes, out):
             text-align: center; vertical-align: top; }
     .text a { color: var(--c_fg); }
     .text { display: inline-block; width: 90%; }
-    """), E.title("Notes %s" % timestamp)), body)
+    .filelink { font-family: monospace; font-size: 60%; padding-right: 1ex }
+    .filepath { width: 0 }
+    """),
+    E.script("""
+    function copyPath(file) {
+      var copyText = document.getElementById('copy-text');
+      copyText.value = file;
+      copyText.select();
+      document.execCommand("copy");
+      // alert("Copied the text: " + copyText.value);
+    }
+    """)
+    ), body)
 
     for annote in annotes:
         h2 = E.h2(
             E.span(annote['ID'], class_='bibkey'), ' ',
+            E.span('F', class_='filelink', onclick='copyPath("%s")'%annote['file'], title='Copy path to file'),
             E.span(E.a(annote['title'], href=annote['file'], target=annote['file']), class_='title'), ' ',
         )
         if annote.get('doi'):
@@ -167,6 +182,8 @@ def html_dump(annotes, out):
             ))
             if annotation['note']:
                 body.append(E.div(annotation['note'], class_='note'))
+
+    body.append(E.div(E.input(id='copy-text', value="(pdf file copy / paste)")))
 
     html_str = ET.tostring(html)
     html_str = html_str.decode('utf-8').replace('class_', 'class')
