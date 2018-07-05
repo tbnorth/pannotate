@@ -46,7 +46,7 @@ def make_parser():
     parser.add_argument('--html', action='store_true',
         help='Return HTML output')
     parser.add_argument('--cite-as',
-        help='E.g. "--cite-as=\\\\no-site{%%s}" to get a list of'
+        help='E.g. "--cite-as=\\\\no-site{%%s}" to get a list of '
         'citation commands (useful with --filter).')
     parser.add_argument('--filter', action='append', nargs=2,
         metavar=('KEY', 'PATTERN'), default=[],
