@@ -160,6 +160,7 @@ def html_dump(annotes, out):
     ), body)
 
     for annote in annotes:
+        annote = defaultdict(lambda: '?', annote)
         h2 = E.h2(
             E.span(annote['ID'], class_='bibkey'), ' ',
             E.span('F', class_='filelink', onclick='copyPath("%s")'%annote['file'], title='Copy path to file'),
@@ -175,13 +176,13 @@ def html_dump(annotes, out):
             body.append(E.div(annote['review'], class_='note'))
         for annotation in annote['annotations']:
             body.append(E.div(
-                E.span(E.span(annotation['page']), class_='page'), ' ',
-                E.span(E.a(annotation['text'],
-                    href="%s#page=%s" % (annote['file'], annotation['page']), target='_blank'), class_='text'),
+                E.span(E.span(str(annotation.page)), class_='page'), ' ',
+                E.span(E.a(annotation.text,
+                    href="%s#page=%s" % (annote['file'], annotation.page), target='_blank'), class_='text'),
                 class_='annotation',
             ))
-            if annotation['note']:
-                body.append(E.div(annotation['note'], class_='note'))
+            if annotation.note:
+                body.append(E.div(annotation.note, class_='note'))
 
     body.append(E.div(E.input(id='copy-text', value="(pdf file copy / paste)")))
 
@@ -191,11 +192,11 @@ def html_dump(annotes, out):
 
 def annote_str(annote):
     annote = defaultdict(lambda: "?", annote)
-    ans = [u"{author}, {year}, {journal}, {ID}\n{title}".format(**annote)]
+    ans = [u"{0[author]}, {0[year]}, {0[journal]}, {0[ID]}\n{0[title]}".format(annote)]
     for annotation in annote['annotations']:
-        ans.append("p%s, %s" % (annotation['page'], annotation['text']))
-        if annotation['note']:
-            ans.append('=>  %s' % annotation['note'])
+        ans.append("p%s, %s" % (annotation.page, annotation.text))
+        if annotation.note:
+            ans.append('=>  %s' % annotation.note)
     return '\n'.join(ans)
 
 def get_annotes(filepath):
