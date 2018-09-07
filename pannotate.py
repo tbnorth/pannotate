@@ -1,3 +1,9 @@
+"""
+--filter keyword NNNM
+i.e. it's `keyword`, not `keywords` etc.
+
+"""
+
 import argparse
 import json
 import os
@@ -79,7 +85,7 @@ def main():
 
 def annotes_dicts(bibfile, pdfdir, filters, include_all=False):
 
-    with open(bibfile) as bibtex_file:
+    with open(bibfile, encoding="utf-8") as bibtex_file:
         bibtex_str = bibtex_file.read()
     bib_database = bibtexparser.loads(bibtex_str)
 
@@ -176,13 +182,13 @@ def html_dump(annotes, out):
             body.append(E.div(annote['review'], class_='note'))
         for annotation in annote['annotations']:
             body.append(E.div(
-                E.span(E.span(str(annotation.page)), class_='page'), ' ',
-                E.span(E.a(annotation.text,
-                    href="%s#page=%s" % (annote['file'], annotation.page), target='_blank'), class_='text'),
+                E.span(E.span(str(annotation['page'])), class_='page'), ' ',
+                E.span(E.a(annotation['text'],
+                    href="%s#page=%s" % (annote['file'], annotation['page']), target='_blank'), class_='text'),
                 class_='annotation',
             ))
-            if annotation.note:
-                body.append(E.div(annotation.note, class_='note'))
+            if annotation.get('note'):
+                body.append(E.div(annotation['note'], class_='note'))
 
     body.append(E.div(E.input(id='copy-text', value="(pdf file copy / paste)")))
 
