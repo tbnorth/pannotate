@@ -15,6 +15,7 @@ import urllib
 from collections import namedtuple, defaultdict
 
 import bibtexparser
+from bibtexparser.bparser import BibTexParser
 import popplerqt5
 import PyQt5
 
@@ -87,7 +88,9 @@ def annotes_dicts(bibfile, pdfdir, filters, include_all=False):
 
     with open(bibfile, encoding="utf-8") as bibtex_file:
         bibtex_str = bibtex_file.read()
-    bib_database = bibtexparser.loads(bibtex_str)
+    parser = BibTexParser()
+    parser.ignore_nonstandard_types = False
+    bib_database = bibtexparser.loads(bibtex_str, parser)
 
     annotes_list = []
 
@@ -168,7 +171,7 @@ def html_dump(annotes, out):
     for annote in annotes:
         annote = defaultdict(lambda: '?', annote)
         h2 = E.h2(
-            E.span(annote['ID'], class_='bibkey'), ' ',
+            E.a(E.span(annote['ID'], id=annote['ID'], class_='bibkey'), href="#"+annote['ID']), ' ',
             E.span('F', class_='filelink', onclick='copyPath("%s")'%annote['file'], title='Copy path to file'),
             E.span(E.a(annote['title'], href=annote['file'], target=annote['file']), class_='title'), ' ',
         )
@@ -194,6 +197,7 @@ def html_dump(annotes, out):
 
     html_str = ET.tostring(html)
     html_str = html_str.decode('utf-8').replace('class_', 'class')
+    html_str = html_str.replace('{{', '').replace('}}', '')
     out.write(html_str)
 
 def annote_str(annote):
