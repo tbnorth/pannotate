@@ -173,12 +173,12 @@ def html_dump(annotes, out):
         h2 = E.h2(
             E.a(E.span(annote['ID'], id=annote['ID'], class_='bibkey'), href="#"+annote['ID']), ' ',
             E.span('F', class_='filelink', onclick='copyPath("%s")'%annote['file'], title='Copy path to file'),
-            E.span(E.a(annote['title'], href=annote['file'], target=annote['file']), class_='title'), ' ',
+            E.span(E.a(annote['title'] or '???', href=annote['file'], target=annote['file']), class_='title'), ' ',
         )
         if annote.get('doi'):
             h2.append(E.span(E.a(annote['doi'], href='https://dx.doi.org/'+annote['doi'], target=annote['file']), class_='doi'))
         body.append(h2)
-        body.append(E.div(annote['author'], class_='author'))
+        body.append(E.div(annote['author'] or '???', class_='author'))
         if annote.get('journal'):
             body.append(E.div(annote['journal'], class_='journal'))
         if annote.get('review'):
