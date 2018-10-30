@@ -67,7 +67,8 @@ def main():
 
     if len(opt.inputs) == 1:
         annote = {}
-        annote['annotations'] = get_annotes(opt.inputs[0])
+        annote['annotations'] = [i._asdict() for i in get_annotes(opt.inputs[0])]
+        annote['file'] = opt.inputs[0]
         annotes = [annote]
     else:
         bibfile, pdfdir = opt.inputs
@@ -187,7 +188,7 @@ def html_dump(annotes, out):
             body.append(E.div(
                 E.span(E.span(str(annotation['page'])), class_='page'), ' ',
                 E.span(E.a(annotation['text'],
-                    href="%s#page=%s" % (annote['file'], annotation['page']), target='_blank'), class_='text'),
+                    href="%s#page=%s" % (annote['file'], annotation['page']), target='_blank_%s' % annote['file']), class_='text'),
                 class_='annotation',
             ))
             if annotation.get('note'):
