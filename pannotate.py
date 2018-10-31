@@ -151,7 +151,7 @@ def html_dump(annotes, out):
     .author { font-weight: bold; }
     .journal { font-style: italic; }
     .note { color: var(--c_note); }
-    .page { display: inline-block; width: 2em; font-family: "Courier New", monospace; 
+    .page { display: inline-block; width: 2em; font-family: "Courier New", monospace;
             text-align: center; vertical-align: top; }
     .text a { color: var(--c_fg); }
     .text { display: inline-block; width: 90%; }
@@ -205,9 +205,9 @@ def annote_str(annote):
     annote = defaultdict(lambda: "?", annote)
     ans = [u"{0[author]}, {0[year]}, {0[journal]}, {0[ID]}\n{0[title]}".format(annote)]
     for annotation in annote['annotations']:
-        ans.append("p%s, %s" % (annotation.page, annotation.text))
-        if annotation.note:
-            ans.append('=>  %s' % annotation.note)
+        ans.append("p%s, %s" % (annotation['page'], annotation['text']))
+        if annotation['note']:
+            ans.append('=>  %s' % annotation['note'])
     return '\n'.join(ans)
 
 def get_annotes(filepath):
