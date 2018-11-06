@@ -228,21 +228,24 @@ def get_annotes(filepath):
         pheight = page.pageSize().height()
         # pwidth = pheight = 1
         for annotation in page.annotations():
-            if not isinstance(annotation, popplerqt5.Poppler.HighlightAnnotation):
+            if isinstance(annotation, popplerqt5.Poppler.LinkAnnotation):
                 continue
             pagenum = page_n+1
             date = annotation.modificationDate().toString()
             note = annotation.contents()
             txt = []
-            for quad in annotation.highlightQuads():
-                bdy = PyQt5.QtCore.QRectF()
-                bdy.setCoords(
-                    quad.points[0].x() * pwidth,
-                    quad.points[0].y() * pheight,
-                    quad.points[2].x() * pwidth,
-                    quad.points[2].y() * pheight
-                )
-                txt.append(unicode(page.text(bdy)))
+            if not isinstance(annotation, popplerqt5.Poppler.HighlightAnnotation):
+                txt.append(annotation.__class__.__name__)
+            if hasattr(annotation, 'highlightQuads'):
+                for quad in annotation.highlightQuads():
+                    bdy = PyQt5.QtCore.QRectF()
+                    bdy.setCoords(
+                        quad.points[0].x() * pwidth,
+                        quad.points[0].y() * pheight,
+                        quad.points[2].x() * pwidth,
+                        quad.points[2].y() * pheight
+                    )
+                    txt.append(unicode(page.text(bdy)))
             txt = ' '.join(txt)
             annotes.append(Annote(page=pagenum, text=txt, note=note, date=date))
 
